@@ -6,7 +6,7 @@ A command-line user interface built on top of the [Vivid](https://hackage.haskel
 
 If you want to run the SuperCollider server yourself, you need to install it and find the `scsynth` binary.
 
-For example, to start the server run:
+For example, with a default Mac installation, to start the server run:
 ```
 $ /Applications/SuperCollider.app/Contents/Resources/scsynth -u 57110
 ```
