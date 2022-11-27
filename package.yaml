@@ -21,6 +21,36 @@ description:         Please see the README on GitHub at <https://github.com/ana-
 
 dependencies:
 - base >= 4.7 && < 5
+- haskeline
+- transformers
+- network
+
+default-extensions:
+  BangPatterns
+  DataKinds
+  DefaultSignatures
+  DeriveAnyClass
+  DeriveGeneric
+  DerivingStrategies
+  DerivingVia
+  DuplicateRecordFields
+  FlexibleInstances
+  FunctionalDependencies
+  GADTs
+  GeneralizedNewtypeDeriving
+  ImportQualifiedPost
+  KindSignatures
+  LambdaCase
+  MultiParamTypeClasses
+  NamedFieldPuns
+  OverloadedRecordDot
+  OverloadedStrings
+  ScopedTypeVariables
+  StandaloneDeriving
+  TupleSections
+  TypeApplications
+  TypeFamilies
+  ViewPatterns
 
 ghc-options:
 - -Wall

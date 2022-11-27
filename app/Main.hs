@@ -3,6 +3,10 @@
 module Main (main) where
 
 import Vivid
+import System.Console.Haskeline
+import Control.Monad.Trans.State.Strict (StateT (..), evalStateT, modify)
+import Control.Monad.Trans.Reader (ReaderT(..))
+import Network.Socket (Socket)
 
 playSong :: VividAction m => m ()
 playSong = do
@@ -43,18 +47,55 @@ main :: IO ()
 main = do
    let portTODO = "57110"
        hostnameTODO = "127.0.0.1"
+   env <- setupServerConnection hostnameTODO portTODO
+   runMusicEngine env defaultState musicEngineLoop
+
+setupServerConnection :: String -> String -> IO MusicEngineEnv
+setupServerConnection hostname port = do
    serverState <- makeEmptySCServerState
-   let connectConfig = defaultConnectConfig { _scConnectConfig_port = portTODO, _scConnectConfig_hostName = hostnameTODO }
-   socket <- createSCServerConnection' serverState connectConfig
-   doScheduledInWith serverState 5.0 (note (60 :: I "note") 3)
-   -- putStrLn "Simplest:"
-   -- playSong
+   let connectConfig =
+         defaultConnectConfig
+            { _scConnectConfig_port = port
+            , _scConnectConfig_hostName = hostname
+            }
+   createSCServerConnection' serverState connectConfig
+   return MusicEngineEnv {connectConfig, serverState}
 
-   -- putStrLn "With precise timing:"
-   -- doScheduledIn 0.1 playSong
-   -- wait 1
+data MusicEngineState = MusicEngineState
+   { currentInstrument :: SynthDef '["note"]
+   }
 
-   -- putStrLn "Written to a file, non-realtime synthesis:"
-   -- putStrLn "(Need to quit the running server for NRT)"
-   -- quitSCServer
-   -- writeNRT "song.wav" playSong
+data MusicEngineEnv = MusicEngineEnv
+   { serverState :: SCServerState
+   , connectConfig :: SCConnectConfig
+   }
+
+defaultState :: MusicEngineState
+defaultState =
+   MusicEngineState
+      { currentInstrument = theSound
+      }
+
+type MusicEngineT m = InputT (StateT MusicEngineState (ReaderT MusicEngineEnv m)) 
+
+runMusicEngine :: MusicEngineEnv -> MusicEngineState -> MusicEngineT IO () -> IO ()
+runMusicEngine env state action =
+   runReaderT (evalStateT (runInputT defaultSettings action) state) env 
+
+musicEngineLoop :: MusicEngineT IO ()
+musicEngineLoop = do
+   minput <- getInputLine "> "
+   case minput of
+      Nothing -> return ()
+      Just "exit" -> return ()
+      Just input -> do
+         evaluateCommand input
+         musicEngineLoop
+
+evaluateCommand :: String -> MusicEngineT IO ()
+evaluateCommand str
+   | str == "demo" = do
+      outputStrLn "Playing demo song..."
+      liftIO playSong
+   | otherwise =
+      outputStrLn "Command not recognized."
