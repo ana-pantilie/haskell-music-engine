@@ -4,51 +4,46 @@ module Main (main) where
 
 import Vivid
 import System.Console.Haskeline
-import Control.Monad.Trans.State.Strict (StateT (..), evalStateT, modify)
+import Control.Monad.Trans.State.Strict (StateT (..), evalStateT)
 import Control.Monad.Trans.Reader (ReaderT(..))
-import Network.Socket (Socket)
+import Control.Monad.State.Class (MonadState(..))
+import Control.Monad.Reader (MonadReader(..))
+import Control.Monad.Catch (MonadThrow, MonadCatch, MonadMask)
 
-playSong :: VividAction m => m ()
-playSong = do
+playSong :: VividAction m => SynthDef '["note"] -> m ()
+playSong currentInstrument = do
    fork $ do
-      s0 <- synth theSound (36 ::I "note")
+      s0 <- synth currentInstrument (36 ::I "note")
       wait 1
       free s0
-   s1 <- synth theSound (60 ::I "note")
-   forM_ [62,66,64] $ \note -> do
+   s1 <- synth currentInstrument (60 ::I "note")
+   forM_ [62,66,64,60,60,62,60,90,80] $ \note -> do
       wait (1/4)
       set s1 (note ::I "note")
    wait (1/4)
    free s1
 
-test1 :: Scheduled ()
-test1 = do
-   s1 <- synth theSound (60 ::I "note")
-   wait 1
-   s2 <- synth theSound (76 ::I "note")
-   wait 1
-   free s1
-   wait 1
-   free s2
-
-note :: I "note" -> Int -> Scheduled ()
-note i t = do
-   s <- synth theSound i
-   wait t
-   free s
-
-theSound :: SynthDef '["note"]
-theSound = sd (0 ::I "note") $ do
+halloween :: SynthDef '["note"]
+halloween = sd (0 ::I "note") $ do
    wobble <- sinOsc (freq_ 5) ? KR ~* 10 ~+ 10
    s <- 0.1 ~* sinOsc (freq_ $ midiCPS (V::V "note") ~+ wobble)
    out 0 [s,s]
+
+basicSaw :: SynthDef '["note"]
+basicSaw = sd (0 ::I "note") $ do
+   s <- 0.1 ~* saw (freq_ $ midiCPS (V::V "note"))
+   out 0 [s, s] 
 
 main :: IO ()
 main = do
    let portTODO = "57110"
        hostnameTODO = "127.0.0.1"
    env <- setupServerConnection hostnameTODO portTODO
-   runMusicEngine env defaultState musicEngineLoop
+   putStrLn "Welcome to the Haskell Music Engine!"
+   runMusicEngine
+      env
+      defaultState
+      (runInputT defaultSettings musicEngineLoop)
 
 setupServerConnection :: String -> String -> IO MusicEngineEnv
 setupServerConnection hostname port = do
@@ -73,16 +68,21 @@ data MusicEngineEnv = MusicEngineEnv
 defaultState :: MusicEngineState
 defaultState =
    MusicEngineState
-      { currentInstrument = theSound
+      { currentInstrument = basicSaw
       }
 
-type MusicEngineT m = InputT (StateT MusicEngineState (ReaderT MusicEngineEnv m)) 
+newtype MusicEngineT m a = MusicEngineT
+   { runMusicEngineT :: StateT MusicEngineState (ReaderT MusicEngineEnv m) a
+   } 
+   deriving newtype (Functor, Applicative, Monad)
+   deriving newtype (MonadIO, MonadState MusicEngineState, MonadReader MusicEngineEnv)
+   deriving newtype (MonadThrow, MonadCatch, MonadMask)
 
 runMusicEngine :: MusicEngineEnv -> MusicEngineState -> MusicEngineT IO () -> IO ()
-runMusicEngine env state action =
-   runReaderT (evalStateT (runInputT defaultSettings action) state) env 
+runMusicEngine env state (MusicEngineT action) =
+   runReaderT (evalStateT action state) env 
 
-musicEngineLoop :: MusicEngineT IO ()
+musicEngineLoop :: InputT (MusicEngineT IO) ()
 musicEngineLoop = do
    minput <- getInputLine "> "
    case minput of
@@ -92,10 +92,20 @@ musicEngineLoop = do
          evaluateCommand input
          musicEngineLoop
 
-evaluateCommand :: String -> MusicEngineT IO ()
+evaluateCommand :: String -> InputT (MusicEngineT IO) ()
 evaluateCommand str
    | str == "demo" = do
+      MusicEngineEnv {serverState} <- lift ask
+      MusicEngineState {currentInstrument} <- lift get
       outputStrLn "Playing demo song..."
-      liftIO playSong
+      liftIO $ doScheduledInWith serverState 0.1 (playSong currentInstrument)
+   | str == "set halloween" = do
+      engineState <- lift get
+      lift $ put engineState {currentInstrument = halloween}
+      outputStrLn "Set the current instrument to 'halloween'."
+   | str == "set basic-synth" = do
+      engineState <- lift get
+      lift $ put engineState {currentInstrument = basicSaw}
+      outputStrLn "Set the current instrument to 'basic-synth'."
    | otherwise =
       outputStrLn "Command not recognized."

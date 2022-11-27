@@ -24,6 +24,8 @@ dependencies:
 - haskeline
 - transformers
 - network
+- mtl
+- exceptions
 
 default-extensions:
   BangPatterns
