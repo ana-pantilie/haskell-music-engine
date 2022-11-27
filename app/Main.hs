@@ -11,6 +11,7 @@ import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.Catch (MonadThrow, MonadCatch, MonadMask)
 import Options.Applicative
 
+-- Slightly modified from the Vivid package examples.
 playSong :: VividAction m => SynthDef '["note"] -> m ()
 playSong currentInstrument = do
    fork $ do
@@ -24,6 +25,7 @@ playSong currentInstrument = do
    wait (1/4)
    free s1
 
+-- Extracted from the Vivid package examples.
 halloween :: SynthDef '["note"]
 halloween = sd (0 ::I "note") $ do
    wobble <- sinOsc (freq_ 5) ? KR ~* 10 ~+ 10
