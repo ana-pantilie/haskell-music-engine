@@ -199,7 +199,7 @@ doubleOnce x = do
 
 ---
 
-# Combining Effects
+# Combining Effects (1)
 
 We want to:
 - have several effects inside the same function
@@ -212,20 +212,13 @@ They are types which allow you to stack several monads on top of eachother, and 
 (*) in general, monads don't always compose
 
 ---
+# Combining Effects (2)
 
-# A Final Example
-
-todo
-
----
-
-# haskell-music-engine: a more in-depth look
-
----
-
-# Conclusions
-
-- any final questions?
+### 1. haskell-music-engine: a more in-depth look
+### 2. Further reading:
+- transformers package: https://hackage.haskell.org/package/transformers
+- mtl package:
+https://hackage.haskell.org/package/mtl
 
 ---
 
