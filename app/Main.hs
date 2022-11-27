@@ -9,6 +9,7 @@ import Control.Monad.Trans.Reader (ReaderT(..))
 import Control.Monad.State.Class (MonadState(..))
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.Catch (MonadThrow, MonadCatch, MonadMask)
+import Options.Applicative
 
 playSong :: VividAction m => SynthDef '["note"] -> m ()
 playSong currentInstrument = do
@@ -36,14 +37,46 @@ basicSaw = sd (0 ::I "note") $ do
 
 main :: IO ()
 main = do
-   let portTODO = "57110"
-       hostnameTODO = "127.0.0.1"
-   env <- setupServerConnection hostnameTODO portTODO
+   CLOptions {supercolliderAddress, port} <- execParser clParser
+   env <- setupServerConnection supercolliderAddress port
    putStrLn "Welcome to the Haskell Music Engine!"
    runMusicEngine
       env
       defaultState
       (runInputT defaultSettings musicEngineLoop)
+  where
+   clParser =
+      info
+         (clOptionsParser <**> helper)
+         parserInfoModifiers
+   parserInfoModifiers =
+      fullDesc
+         <> header "Haskell Music Engine - a work in progress..."
+
+data CLOptions = CLOptions
+    { supercolliderAddress :: String
+    , port :: String
+    }
+
+clOptionsParser :: Parser CLOptions
+clOptionsParser =
+    CLOptions
+        <$> option
+            str
+            ( metavar "SERVER_ADDRESS"
+               <> long "server-address"
+               <> value "127.0.0.1"
+               <> help "Address of a running SuperCollider server."
+               <> showDefault
+            )
+        <*> option
+            str
+            ( metavar "SERVER_PORT"
+                <> long "server-port"
+                <> value "57110"
+                <> help "Port to use for accessing SuperCollider server."
+                <> showDefault
+            )
 
 setupServerConnection :: String -> String -> IO MusicEngineEnv
 setupServerConnection hostname port = do

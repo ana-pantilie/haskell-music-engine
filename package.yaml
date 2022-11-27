@@ -26,6 +26,7 @@ dependencies:
 - network
 - mtl
 - exceptions
+- optparse-applicative
 
 default-extensions:
   BangPatterns

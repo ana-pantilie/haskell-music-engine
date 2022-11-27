@@ -39,6 +39,7 @@ library
     , haskeline
     , mtl
     , network
+    , optparse-applicative
     , transformers
   default-language: Haskell2010
 
@@ -58,6 +59,7 @@ executable haskell-music-engine-exe
     , haskell-music-engine
     , mtl
     , network
+    , optparse-applicative
     , transformers
     , vivid
   default-language: Haskell2010
@@ -79,5 +81,6 @@ test-suite haskell-music-engine-test
     , haskell-music-engine
     , mtl
     , network
+    , optparse-applicative
     , transformers
   default-language: Haskell2010
