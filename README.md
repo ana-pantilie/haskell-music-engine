@@ -21,5 +21,5 @@ $ stack build
 The SuperCollider server needs to be running at the default address and port.
 
 ```
-$ stack exec -- haskell-music-engine
+$ stack exec -- haskell-music-engine-exe
 ```
