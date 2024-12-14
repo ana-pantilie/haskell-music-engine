@@ -1,29 +1,64 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExtendedDefaultRules #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Main (main) where
 
 import Vivid
+    ( forM_,
+      (<**>),
+      free,
+      set,
+      synth,
+      doScheduledInWith,
+      createSCServerConnection',
+      defaultConnectConfig,
+      makeEmptySCServerState,
+      (?),
+      sd,
+      midiCPS,
+      (~*),
+      (~+),
+      freq_,
+      saw,
+      sinOsc,
+      out,
+      MonadIO(..),
+      MonadTrans(lift),
+      VividAction(wait, fork),
+      SCConnectConfig(_scConnectConfig_hostName, _scConnectConfig_port),
+      SCServerState,
+      SynthDef,
+      I,
+      V,
+      Variable(V),
+      CalculationRate(KR) )
 import System.Console.Haskeline
+    ( defaultSettings, getInputLine, outputStrLn, runInputT, InputT )
 import Control.Monad.Trans.State.Strict (StateT (..), evalStateT)
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Control.Monad.State.Class (MonadState(..))
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.Catch (MonadThrow, MonadCatch, MonadMask)
 import Options.Applicative
+    ( fullDesc,
+      header,
+      help,
+      info,
+      long,
+      metavar,
+      option,
+      showDefault,
+      str,
+      value,
+      execParser,
+      helper,
+      Parser )
 
 -- Slightly modified from the Vivid package examples.
 playSong :: VividAction m => SynthDef '["note"] -> m ()
@@ -49,7 +84,7 @@ halloween = sd (0 ::I "note") $ do
 basicSaw :: SynthDef '["note"]
 basicSaw = sd (0 ::I "note") $ do
    s <- 0.1 ~* saw (freq_ $ midiCPS (V::V "note"))
-   out 0 [s, s] 
+   out 0 [s, s]
 
 main :: IO ()
 main = do
@@ -102,10 +137,10 @@ setupServerConnection hostname port = do
             { _scConnectConfig_port = port
             , _scConnectConfig_hostName = hostname
             }
-   createSCServerConnection' serverState connectConfig
+   _ <- createSCServerConnection' serverState connectConfig
    return MusicEngineEnv {connectConfig, serverState}
 
-data MusicEngineState = MusicEngineState
+newtype MusicEngineState = MusicEngineState
    { currentInstrument :: SynthDef '["note"]
    }
 
@@ -122,14 +157,14 @@ defaultState =
 
 newtype MusicEngineT m a = MusicEngineT
    { runMusicEngineT :: StateT MusicEngineState (ReaderT MusicEngineEnv m) a
-   } 
+   }
    deriving newtype (Functor, Applicative, Monad)
    deriving newtype (MonadIO, MonadState MusicEngineState, MonadReader MusicEngineEnv)
    deriving newtype (MonadThrow, MonadCatch, MonadMask)
 
 runMusicEngine :: MusicEngineEnv -> MusicEngineState -> MusicEngineT IO () -> IO ()
 runMusicEngine env state (MusicEngineT action) =
-   runReaderT (evalStateT action state) env 
+   runReaderT (evalStateT action state) env
 
 musicEngineLoop :: InputT (MusicEngineT IO) ()
 musicEngineLoop = do

@@ -9,7 +9,7 @@
 cabalProject:
 
 {
-  name = "nix-shell";
+  name = "Haskell Music Engine";
 
   # prompt = null;
 
