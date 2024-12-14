@@ -13,24 +13,30 @@ backgroundImage: url('https://marp.app/assets/hero-background.svg')
 
 University of Bucharest
 
-28 November 2022
+18 December 2024
 
 ---
 
 # A bit about me
 
-- Full time Haskeller at [Runtime Verification, Inc.](https://runtimeverification.com/)
-- Our project: A symbolic execution engine and automated prover for the K language
-    - over 150k lines of open-source Haskell code: https://github.com/runtimeverification/haskell-backend
-    - more about the K language and framework: https://kframework.org/
+- Full time Haskeller (and part time Agda hacker) at [IOG](https://iohk.io/)
+- Part of the team working on the [Plutus](https://plutus.cardano.intersectmbo.org/docs/) ecosystem
+- Compiling a Haskell-like language, _Plutus Tx_, to _Untyped Plutus Core_
+- Evaluator for UPLC; Standard Library for Plutus Tx
+- Agda metatheory for proofs about the project; formal methods tooling
+- UPLC runs on the [Cardano](https://cardano.org/) node, which is all written in Haskell
 
 ---
 
 # Today's Presentation
 
-1. Demo: a Haskell program which interacts with the outside world
+1. Demo: a small Haskell program which interacts with the outside world
 2. Theory: language constructs which allow this interaction
 3. Practice: let's see how these ideas apply in our demo program!
+
+---
+
+# Demo
 
 ---
 
@@ -216,7 +222,8 @@ They are types which allow you to stack several monads on top of eachother, and 
 
 ### 1. haskell-music-engine: a more in-depth look
 ### 2. Further reading:
-- transformers package: https://hackage.haskell.org/package/transformers
+- transformers package:
+https://hackage.haskell.org/package/transformers
 - mtl package:
 https://hackage.haskell.org/package/mtl
 
