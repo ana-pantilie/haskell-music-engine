@@ -10,34 +10,6 @@
 module Main (main) where
 
 import Vivid
-    ( forM_,
-      (<**>),
-      free,
-      set,
-      synth,
-      doScheduledInWith,
-      createSCServerConnection',
-      defaultConnectConfig,
-      makeEmptySCServerState,
-      (?),
-      sd,
-      midiCPS,
-      (~*),
-      (~+),
-      freq_,
-      saw,
-      sinOsc,
-      out,
-      MonadIO(..),
-      MonadTrans(lift),
-      VividAction(wait, fork),
-      SCConnectConfig(_scConnectConfig_hostName, _scConnectConfig_port),
-      SCServerState,
-      SynthDef,
-      I,
-      V,
-      Variable(V),
-      CalculationRate(KR) )
 import System.Console.Haskeline
     ( defaultSettings, getInputLine, outputStrLn, runInputT, InputT )
 import Control.Monad.Trans.State.Strict (StateT (..), evalStateT)
@@ -61,29 +33,23 @@ import Options.Applicative
       Parser )
 
 -- Slightly modified from the Vivid package examples.
-playSong :: VividAction m => SynthDef '["note"] -> m ()
-playSong currentInstrument = do
-   fork $ do
-      s0 <- synth currentInstrument (36 ::I "note")
-      wait 1
-      free s0
-   s1 <- synth currentInstrument (60 ::I "note")
-   forM_ [62,66,64,60,60,62,60,90,80] $ \note -> do
-      wait (1/4)
-      set s1 (note ::I "note")
-   wait (1/4)
-   free s1
+playSong :: VividAction m => [I "note"] -> SynthDef '["note"] -> m ()
+playSong song currentInstrument = do 
+   _ <- traverse (playNote currentInstrument) song
+   return ()
 
--- Extracted from the Vivid package examples.
-halloween :: SynthDef '["note"]
-halloween = sd (0 ::I "note") $ do
-   wobble <- sinOsc (freq_ 5) ? KR ~* 10 ~+ 10
-   s <- 0.1 ~* sinOsc (freq_ $ midiCPS (V::V "note") ~+ wobble)
-   out 0 [s,s]
+playNote :: VividAction m => SynthDef '["note"] -> I "note" -> m ()
+playNote instr note = do
+   s1 <- synth instr (note ::I "note")
+   wait 1
+   free s1
 
 basicSaw :: SynthDef '["note"]
 basicSaw = sd (0 ::I "note") $ do
-   s <- 0.1 ~* saw (freq_ $ midiCPS (V::V "note"))
+   s <-
+      0.1
+      ~* saw (freq_ $ midiCPS (V::V "note"))
+      ~* adsrGen 0.2 0.5 0.01 0.01 Curve_Linear (peakLevel_ 10)
    out 0 [s, s]
 
 main :: IO ()
@@ -140,8 +106,9 @@ setupServerConnection hostname port = do
    _ <- createSCServerConnection' serverState connectConfig
    return MusicEngineEnv {connectConfig, serverState}
 
-newtype MusicEngineState = MusicEngineState
+data MusicEngineState = MusicEngineState
    { currentInstrument :: SynthDef '["note"]
+   , currentSong :: [I "note"]
    }
 
 data MusicEngineEnv = MusicEngineEnv
@@ -153,6 +120,7 @@ defaultState :: MusicEngineState
 defaultState =
    MusicEngineState
       { currentInstrument = basicSaw
+      , currentSong = []
       }
 
 newtype MusicEngineT m a = MusicEngineT
@@ -178,18 +146,58 @@ musicEngineLoop = do
 
 evaluateCommand :: String -> InputT (MusicEngineT IO) ()
 evaluateCommand str
-   | str == "demo" = do
+   | str == "play" = do
       MusicEngineEnv {serverState} <- lift ask
-      MusicEngineState {currentInstrument} <- lift get
-      outputStrLn "Playing demo song..."
-      liftIO $ doScheduledInWith serverState 0.1 (playSong currentInstrument)
-   | str == "set halloween" = do
-      engineState <- lift get
-      lift $ put engineState {currentInstrument = halloween}
-      outputStrLn "Set the current instrument to 'halloween'."
-   | str == "set basic-synth" = do
+      MusicEngineState {currentInstrument, currentSong} <- lift get
+      outputStrLn "Playing song..."
+      liftIO $ doScheduledInWith serverState 0.1 (playSong currentSong currentInstrument)
+   | str == "set basic-saw" = do
       engineState <- lift get
       lift $ put engineState {currentInstrument = basicSaw}
       outputStrLn "Set the current instrument to 'basic-synth'."
    | otherwise =
-      outputStrLn "Command not recognized."
+      case words str of
+         ["add", "note", note] -> do
+            engineState <- lift get
+            lift $ put engineState {currentSong = currentSong engineState ++ [toI (read note)]}
+            outputStrLn "Added note to song."
+         _ -> outputStrLn "Command not recognized."
+
+type Semitones = Integer
+
+newtype Interval = Interval Semitones -- no of semitones
+
+unison :: Interval
+unison = Interval 0
+
+minorSecond :: Interval
+minorSecond = Interval 1
+
+minorThird :: Interval
+minorThird = Interval 3
+
+majorThird :: Interval
+majorThird = Interval 4
+
+perfectFourth :: Interval
+perfectFourth = Interval 5
+
+newtype Chord = Chord [Interval]
+
+majorTriad :: Chord 
+majorTriad = Chord [majorThird, minorThird]
+
+minorTriad :: Chord
+minorTriad = Chord [minorThird, majorThird]
+
+minorTriad2 :: Chord
+minorTriad2 = Chord [majorThird, perfectFourth]
+
+minorTriad3 :: Chord
+minorTriad3 = Chord [perfectFourth, minorThird]
+
+-- mod 12
+
+newtype Scale = Scale [Interval]
+
+
